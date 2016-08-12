@@ -1,5 +1,7 @@
 FROM alpine:3.4
 
+RUN addgroup -S -g 82 www-data && adduser -S -D -u 82 -G www-data www-data
+
 # Use mainline nginx based on the small alpine image
 INCLUDE https://raw.githubusercontent.com/nginxinc/docker-nginx/master/mainline/alpine/Dockerfile
 
@@ -11,41 +13,39 @@ WGET https://raw.githubusercontent.com/docker-library/php/master/5.6/fpm/alpine/
 WGET https://raw.githubusercontent.com/docker-library/php/master/5.6/fpm/alpine/docker-php-source
 INCLUDE https://raw.githubusercontent.com/docker-library/php/master/5.6/fpm/alpine/Dockerfile
 
-# Install required PHP modules
-RUN docker-php-ext-install \
-	mysql \
-	mysqli \
-	gd \
-	tidy \
-	curl \
-	json \
-	hash
+# Include the PHP extensions
+WGET https://raw.githubusercontent.com/gambit-labs/php/master/php-entrypoint.sh
+INCLUDE https://raw.githubusercontent.com/gambit-labs/php/master/Dockerfile.php5
 
-# Add necessary packages
-RUN apk add --update \
-	postfix \
-	ca-certificates \
-	bash \
-	patch \
-	curl \
-	git
+# Include the gambitlabs/postfix entrypoint script and install postfix
+RUN apk add --update postfix mysql-client
+ADD https://raw.githubusercontent.com/gambit-labs/postfix/master/postfix-entrypoint.sh /postfix-entrypoint.sh
 
-# Include the gambitlabs/postfix entrypoint script and the production php.ini configuration
-ADD https://raw.githubusercontent.com/gambit-labs/postfix/master/docker-entrypoint.sh /postfix-entrypoint.sh
-ADD https://raw.githubusercontent.com/php/php-src/PHP-5.6/php.ini-production /usr/local/etc/php/php.ini
-
-ENV SOURCE_DIR=/source \
-	WWW_DIR=/var/www/html \
+ENV WWW_DIR=/var/www/html \
 	CERT_DIR=/certs \
 	PHP_SHARED_WWW_DIR=/php_html \
 	OVERRIDE_INIT_LOGIC_DIR=/docker-entrypoint-init.d
 
-RUN mkdir -p ${SOURCE_DIR} ${WWW_DIR} ${CERT_DIR} ${PHP_SHARED_WWW_DIR} /etc/nginx/sites-enabled
+RUN mkdir -p \
+		${WWW_DIR} \
+		${CERT_DIR} \
+		${PHP_SHARED_WWW_DIR} \
+		${OVERRIDE_INIT_LOGIC_DIR} \
+		/etc/nginx/sites-enabled \
+		/var/cache/nginx \
+		/etc/nginx/html \
+	&& chmod +x /postfix-entrypoint.sh
 
-COPY nginx/nginx.conf nginx/silverstripe.conf nginx/ssl.conf nginx/php.conf /etc/nginx/
-COPY nginx/http-default.conf /etc/nginx/sites-available/default-http
-COPY nginx/https-default.conf /etc/nginx/sites-available/default-https
+COPY nginx-conf/nginx.conf nginx-conf/ssl.conf nginx-conf/php.conf /etc/nginx/conf/
+COPY nginx-conf/http-default.conf /etc/nginx/sites-available/default-http
+COPY nginx-conf/https-default.conf /etc/nginx/sites-available/default-https
+
+# Default; bare PHP(info) config
+COPY nginx-conf/default-php.conf /etc/nginx/conf.d/index.conf
+COPY index.php /var/www/html/
+
+WORKDIR /var/www/html
 
 # This script is executed by default when the docker container starts
 COPY docker-entrypoint.sh /
-CMD ["/docker-entrypoint.sh"]
+ENTRYPOINT ["/docker-entrypoint.sh"]

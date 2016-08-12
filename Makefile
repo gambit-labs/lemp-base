@@ -1,17 +1,19 @@
 IMAGE_AUTHOR=gambitlabs
 IMAGE_VERSION=v0.4.0
-TARGET_DIR=$(shell pwd)/_output
+STAGE_DIR=$(shell pwd)/_stage
 
-lemp-base: env $(TARGET_DIR)/lemp-base
-$(TARGET_DIR)/lemp-base:
-	./docker-wget-include.sh Dockerfile $@/Dockerfile
-	sed -e "/COPY nginx.conf/d;/COPY nginx.vh.default.conf/d" -i $@/Dockerfile
-	docker build -t $(IMAGE_AUTHOR)/lemp-base:$(IMAGE_VERSION) .
+build: ./docker-ext-include.sh
+	rm -rf $(STAGE_DIR)
+	mkdir -p $(STAGE_DIR)
+	./docker-ext-wget.sh Dockerfile $(STAGE_DIR)/Dockerfile.1
+	./docker-ext-include.sh $(STAGE_DIR)/Dockerfile.1 $(STAGE_DIR)/Dockerfile
+	cp -r nginx-conf docker-entrypoint.sh index.php $(STAGE_DIR)/
+	sed -e "\@/etc/nginx/conf.d/default.conf@d;\@/etc/nginx/nginx.conf@d" -i $(STAGE_DIR)/Dockerfile
+	sed -e "s/--user=nginx/--user=www-data/g;s/--group=nginx/--group=www-data/g" -i $(STAGE_DIR)/Dockerfile
+	sed -e '\@RUN set -x @d;\@&& addgroup@d;\@adduser -D -S@d;\@adduser -u 82@d;' -i $(STAGE_DIR)/Dockerfile
+	docker build -t $(IMAGE_AUTHOR)/lemp-base:$(IMAGE_VERSION) $(STAGE_DIR)
 
-php7: $(TARGET_DIR)/php7
-$(TARGET_DIR)/php7:
-	echo $@
-	exit
-	./docker-wget-include.sh php7/Dockerfile $@/Dockerfile
-	docker build -t $(IMAGE_AUTHOR)/php7:$(IMAGE_VERSION) .
-
+./docker-ext-include.sh:
+	curl -sSL https://raw.githubusercontent.com/gambit-labs/dockerfile-extensions/master/docker-ext-include.sh > docker-ext-include.sh
+	curl -sSL https://raw.githubusercontent.com/gambit-labs/dockerfile-extensions/master/docker-ext-wget.sh > docker-ext-wget.sh
+	chmod +x docker-ext-include.sh docker-ext-wget.sh

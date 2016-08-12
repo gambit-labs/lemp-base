@@ -7,9 +7,9 @@ NGINX_ENABLE_HTTP2=${NGINX_ENABLE_HTTP2:-0}
 NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES:-1}
 NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS:-1024}
 
-PHP_MAX_EXECUTION_TIME=${PHP_MAX_EXECUTION_TIME:-300}
-PHP_MAX_UPLOAD_SIZE=${PHP_MAX_UPLOAD_SIZE:-32}
-PHP_TIMEZONE=${PHP_TIMEZONE:-"Europe/Helsinki"}
+# Get PHP variables and write the right things to php.ini with this script
+export PHP_DO_NOT_EXECUTE=1
+source /php-entrypoint.sh
 
 MAIL_ENABLE=${MAIL_ENABLE:-0}
 
@@ -19,22 +19,12 @@ if [[ ${NGINX_ENABLE_HTTP2} == 1 ]]; then
 fi
 
 # Replace dynamic values in the default web site config
-sed -e "s|NGINX_WORKER_PROCESSES|${NGINX_WORKER_PROCESSES}|g" -i /etc/nginx/nginx.conf
-sed -e "s|NGINX_WORKER_CONNECTIONS|${NGINX_WORKER_CONNECTIONS}|g" -i /etc/nginx/nginx.conf
-sed -e "s|PHP_MAX_UPLOAD_SIZE|${PHP_MAX_UPLOAD_SIZE}|g" -i /etc/nginx/nginx.conf
+sed -e "s|NGINX_WORKER_PROCESSES|${NGINX_WORKER_PROCESSES}|g" -i /etc/nginx/conf/nginx.conf
+sed -e "s|NGINX_WORKER_CONNECTIONS|${NGINX_WORKER_CONNECTIONS}|g" -i /etc/nginx/conf/nginx.conf
+sed -e "s|PHP_MAX_UPLOAD_SIZE|${PHP_MAX_UPLOAD_SIZE}|g" -i /etc/nginx/conf/nginx.conf
 
-sed -e "s|PHP_MAX_EXECUTION_TIME|${PHP_MAX_EXECUTION_TIME}|g" -i /etc/nginx/php.conf
-sed -e "s|PHP_SERVER|${PHP_SERVER:-localhost}|g" -i /etc/nginx/php.conf
-
-sed "/max_execution_time/d;/upload_max_filesize/d;/post_max_size/d;" -i /usr/local/etc/php/php.ini
-cat >> /usr/local/etc/php/php.ini <<EOF
-
-; Options that are coming from the gambitlabs/lemp-base entrypoint script
-date.timezone = ${PHP_TIMEZONE}
-max_execution_time = ${PHP_MAX_EXECUTION_TIME}
-upload_max_filesize = ${PHP_MAX_UPLOAD_SIZE}M
-post_max_size = $((PHP_MAX_UPLOAD_SIZE+1))M
-EOF
+sed -e "s|PHP_MAX_EXECUTION_TIME|${PHP_MAX_EXECUTION_TIME}|g" -i /etc/nginx/conf/php.conf
+sed -e "s|PHP_SERVER|${PHP_SERVER:-"localhost:9000"}|g" -i /etc/nginx/conf/php.conf
 
 # Require those two files
 # docker run -d -e NGINX_ENABLE_HTTPS=1 -v $(pwd)/certs:/certs {image_name}
@@ -53,9 +43,9 @@ if [[ ${NGINX_ENABLE_HTTPS} == 1 && ! -f ${CERT_DIR}/dhparam.pem ]]; then
 	sed -e "/ssl_dhparam/d" -i /etc/nginx/sites-available/default-https
 fi
 
-sed -e "s|WWW_DIR|${WWW_DIR}|g" -i /etc/nginx/sites-available/default-http /etc/nginx/sites-available/default-https
-sed -e "s|NGINX_DOMAIN_NAME|${NGINX_DOMAIN_NAME}|g" -i /etc/nginx/sites-available/default-http /etc/nginx/sites-available/default-https
-sed -e "s|CERT_DIR|${CERT_DIR}|g" -i /etc/nginx/sites-available/default-https
+sed -e "s|WWW_DIR|${WWW_DIR}|g;s|NGINX_DOMAIN_NAME|${NGINX_DOMAIN_NAME}|g;s|CERT_DIR|${CERT_DIR}|g" -i \
+	/etc/nginx/sites-available/default-http \
+	/etc/nginx/sites-available/default-https
 
 # Set the http2 directive
 if [[ ${NGINX_ENABLE_HTTP2} == 1 ]]; then
@@ -76,26 +66,52 @@ if [[ ! -z $(ls ${OVERRIDE_INIT_LOGIC_DIR}) ]]; then
 	for file in ${OVERRIDE_INIT_LOGIC_DIR}/*.sh; do ${file}; done
 fi
 
-# Start PHP 5 in this container if PHP_SERVER is unset
-if [[ -z ${PHP_SERVER} ]]; then
+# If no arguments were passed to the container; start nginx, php and maybe mail
+if [[ $# == 0 ]]; then
 
-	# Start the FastCGI server
-	exec php5-fpm &
+	# Start PHP 5 in this container if PHP_SERVER is unset
+	if [[ -z ${PHP_SERVER} ]]; then
+
+		# Start the FastCGI server
+		exec php-fpm &
+	else
+		# Copy over all data to ${PHP_SHARED_WWW_DIR} and symlink ${WWW_DIR} to ${PHP_SHARED_WWW_DIR}
+		# Makes it possible to mount ${PHP_SHARED_WWW_DIR} to /var/www/html in the separate PHP container.
+		cp -R ${WWW_DIR}/* ${PHP_SHARED_WWW_DIR}
+		rm -r ${WWW_DIR}
+		ln -s ${PHP_SHARED_WWW_DIR} ${WWW_DIR}
+	fi
+
+	# If we should enable sending mail, run the script. The script will be non-blocking (just run once and then the postfix processes will leave in the background)
+	if [[ ${MAIL_ENABLE} == 1 ]]; then
+		POSTFIX_FOREGROUND=0 /postfix-entrypoint.sh
+	fi
+
+	# Make the user and group www-data own the content. nginx is using that user for displaying content 
+	chown -R www-data:www-data ${WWW_DIR}
+
+	# Start the nginx webserver in foreground mode. The docker container lifecycle will be tied to nginx.
+	exec nginx -g "daemon off;"
+elif [[ $# == 1 && $1 == "help" || $1 == "usage" ]]; then
+	cat <<-EOF
+	Supported nginx variables and their defaults:
+	 - NGINX_DOMAIN_NAME=${NGINX_DOMAIN_NAME}: The domain name that nginx should listen to. May be a string with several whitespace-separated domain names.
+	 - NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES}: The amount of worker processes nginx should spawn.
+	 - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS}: The amount of worker connections one process may have open at a given time. 
+	
+	nginx version: $(nginx -v 2>&1 | awk '{print $3}' | cut -d/ -f2)
+	mysql client version: $(mysql --version | awk '{print $5}' | cut -d- -f1)
+
+	Enabled/disabled features:
+	 - NGINX_ENABLE_HTTPS=${NGINX_ENABLE_HTTPS}: If HTTPS should be enabled.
+	 - NGINX_ENABLE_HTTP2=${NGINX_ENABLE_HTTP2}: If HTTP 2.0 should be enabled.
+	 - PHP_SERVER=${PHP_SERVER}: The PHP server nginx should pass requests to. Defaults to "", which means it will use the current.
+	 - MAIL_ENABLE=${MAIL_ENABLE}: If postfix should be enabled
+
+	$(php_usage)
+
+	$(/postfix-entrypoint.sh usage)
+	EOF
 else
-	# Copy over all data to ${PHP_SHARED_WWW_DIR} and symlink ${WWW_DIR} to ${PHP_SHARED_WWW_DIR}
-	# Makes it possible to mount ${PHP_SHARED_WWW_DIR} to /var/www/html in the separate PHP container.
-	cp -R ${WWW_DIR}/* ${PHP_SHARED_WWW_DIR}
-	rm -r ${WWW_DIR}
-	ln -s ${PHP_SHARED_WWW_DIR} ${WWW_DIR}
+	exec $@
 fi
-
-# If we should enable sending mail, run the script. The script will be non-blocking (just run once and then the postfix processes will leave in the background)
-if [[ ${MAIL_ENABLE} == 1 ]]; then
-	POSTFIX_FOREGROUND=0 /postfix-entrypoint.sh
-fi
-
-# Make the user and group www-data own the content. nginx is using that user for displaying content 
-chown -R www-data:www-data ${WWW_DIR}
-
-# Start the nginx webserver in foreground mode. The docker container lifecycle will be tied to nginx.
-exec nginx -g "daemon off;"
