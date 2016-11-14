@@ -7,6 +7,11 @@ NGINX_ENABLE_HTTP2=${NGINX_ENABLE_HTTP2:-0}
 NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES:-1}
 NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS:-1024}
 
+# This is the root nginx conf file
+NGINX_CONF="/etc/nginx/conf/nginx.conf"
+# This is the main nginx server{} directive file
+WEB_CONF="/etc/nginx/conf.d/default-web"
+
 # Get PHP variables and write the right things to php.ini with this script
 export PHP_DO_NOT_EXECUTE=1
 source /php-entrypoint.sh
@@ -19,9 +24,9 @@ if [[ ${NGINX_ENABLE_HTTP2} == 1 ]]; then
 fi
 
 # Replace dynamic values in the default web site config
-sed -e "s|NGINX_WORKER_PROCESSES|${NGINX_WORKER_PROCESSES}|g" -i /etc/nginx/conf/nginx.conf
-sed -e "s|NGINX_WORKER_CONNECTIONS|${NGINX_WORKER_CONNECTIONS}|g" -i /etc/nginx/conf/nginx.conf
-sed -e "s|PHP_MAX_UPLOAD_SIZE|${PHP_MAX_UPLOAD_SIZE}|g" -i /etc/nginx/conf/nginx.conf
+sed -e "s|NGINX_WORKER_PROCESSES|${NGINX_WORKER_PROCESSES}|g" -i ${NGINX_CONF}
+sed -e "s|NGINX_WORKER_CONNECTIONS|${NGINX_WORKER_CONNECTIONS}|g" -i ${NGINX_CONF}
+sed -e "s|PHP_MAX_UPLOAD_SIZE|${PHP_MAX_UPLOAD_SIZE}|g" -i ${NGINX_CONF}
 
 sed -e "s|PHP_MAX_EXECUTION_TIME|${PHP_MAX_EXECUTION_TIME}|g" -i /etc/nginx/conf/php.conf
 sed -e "s|PHP_SERVER|${PHP_SERVER:-"localhost:9000"}|g" -i /etc/nginx/conf/php.conf
@@ -40,25 +45,25 @@ fi
 # If there is no such file, remove the statement from the config
 # Generate with this command: openssl dhparam -out /etc/nginx/ssl/dhparam.pem 2048
 if [[ ${NGINX_ENABLE_HTTPS} == 1 && ! -f ${CERT_DIR}/dhparam.pem ]]; then
-	sed -e "/ssl_dhparam/d" -i /etc/nginx/sites-available/default-https
+	sed -e "/ssl_dhparam/d" -i /etc/nginx/conf/default-https.conf
 fi
 
 sed -e "s|WWW_DIR|${WWW_DIR}|g;s|NGINX_DOMAIN_NAME|${NGINX_DOMAIN_NAME}|g;s|CERT_DIR|${CERT_DIR}|g" -i \
-	/etc/nginx/sites-available/default-http \
-	/etc/nginx/sites-available/default-https
+	/etc/nginx/conf/default-http.conf \
+	/etc/nginx/conf/default-https.conf
 
 # Set the http2 directive
 if [[ ${NGINX_ENABLE_HTTP2} == 1 ]]; then
-	sed -e "s|USE_HTTP2|http2|g" -i /etc/nginx/sites-available/default-https
+	sed -e "s|USE_HTTP2|http2|g" -i /etc/nginx/conf/default-https.conf
 else
-	sed -e "s|USE_HTTP2||g" -i /etc/nginx/sites-available/default-https
+	sed -e "s|USE_HTTP2||g" -i /etc/nginx/conf/default-https.conf
 fi
 
 # If https is disabled, remove the nginx config for HTTPS
 if [[ ${NGINX_ENABLE_HTTPS} == 1 ]]; then
-	ln -s /etc/nginx/sites-available/default-https /etc/nginx/sites-enabled/default
+	ln -s /etc/nginx/conf/default-https.conf ${WEB_CONF}
 else
-	ln -s /etc/nginx/sites-available/default-http /etc/nginx/sites-enabled/default
+	ln -s /etc/nginx/conf/default-http.conf ${WEB_CONF}
 fi
 
 # Make it possible to customize the init logic by executing all .sh files in the override dir.
