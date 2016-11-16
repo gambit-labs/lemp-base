@@ -18,7 +18,7 @@ WGET https://raw.githubusercontent.com/gambit-labs/php/master/php-entrypoint.sh
 INCLUDE https://raw.githubusercontent.com/gambit-labs/php/master/Dockerfile.php5
 
 # Include the gambitlabs/postfix entrypoint script and install postfix
-RUN apk add --update postfix mysql-client
+RUN apk add --update postfix mysql-client apk-cron
 ADD https://raw.githubusercontent.com/gambit-labs/postfix/master/postfix-entrypoint.sh /postfix-entrypoint.sh
 
 ENV WWW_DIR=/var/www/html \
@@ -42,8 +42,6 @@ COPY nginx-conf/*.conf /etc/nginx/conf/
 # The applied/enabled configuration goes in /etc/nginx/conf.d
 COPY sample/default-php.conf ${CONF_DIR}/index.conf
 COPY sample/index.php ${WWW_DIR}/index.php
-
-WORKDIR ${WWW_DIR}
 
 # This script is executed by default when the docker container starts
 COPY docker-entrypoint.sh /

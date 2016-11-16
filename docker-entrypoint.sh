@@ -82,7 +82,7 @@ if [[ $# == 0 ]]; then
 	else
 		# Copy over all data to ${PHP_SHARED_WWW_DIR} and symlink ${WWW_DIR} to ${PHP_SHARED_WWW_DIR}
 		# Makes it possible to mount ${PHP_SHARED_WWW_DIR} to /var/www/html in the separate PHP container.
-		cp -R ${WWW_DIR}/* ${PHP_SHARED_WWW_DIR}
+		cp -r ${WWW_DIR}/* ${PHP_SHARED_WWW_DIR}
 		rm -r ${WWW_DIR}
 		ln -s ${PHP_SHARED_WWW_DIR} ${WWW_DIR}
 	fi
@@ -110,7 +110,7 @@ elif [[ $# == 1 && $1 == "help" || $1 == "usage" ]]; then
 	Enabled/disabled features:
 	 - NGINX_ENABLE_HTTPS=${NGINX_ENABLE_HTTPS}: If HTTPS should be enabled.
 	 - NGINX_ENABLE_HTTP2=${NGINX_ENABLE_HTTP2}: If HTTP 2.0 should be enabled.
-	 - PHP_SERVER=${PHP_SERVER}: The PHP server nginx should pass requests to. Defaults to "", which means it will use the current.
+	 - PHP_SERVER=${PHP_SERVER}: The PHP server nginx should pass requests to. Defaults to "", which means it will use the built-in PHP server.
 	 - MAIL_ENABLE=${MAIL_ENABLE}: If postfix should be enabled
 
 	$(php_usage)
