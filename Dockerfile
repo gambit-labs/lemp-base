@@ -2,6 +2,8 @@ FROM alpine:3.4
 
 RUN addgroup -S -g 82 www-data && adduser -S -D -u 82 -G www-data www-data
 
+RUN apk add --update curl-dev
+
 # Use mainline nginx based on the small alpine image
 INCLUDE https://raw.githubusercontent.com/nginxinc/docker-nginx/master/mainline/alpine/Dockerfile
 
@@ -11,6 +13,7 @@ WGET https://raw.githubusercontent.com/docker-library/php/master/5.6/fpm/alpine/
 WGET https://raw.githubusercontent.com/docker-library/php/master/5.6/fpm/alpine/docker-php-ext-enable
 WGET https://raw.githubusercontent.com/docker-library/php/master/5.6/fpm/alpine/docker-php-ext-install
 WGET https://raw.githubusercontent.com/docker-library/php/master/5.6/fpm/alpine/docker-php-source
+WGET https://raw.githubusercontent.com/docker-library/php/master/5.6/fpm/alpine/docker-php-entrypoint
 INCLUDE https://raw.githubusercontent.com/docker-library/php/master/5.6/fpm/alpine/Dockerfile
 
 # Include the PHP extensions
