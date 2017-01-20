@@ -74,6 +74,11 @@ fi
 # If no arguments were passed to the container; start nginx, php and maybe mail
 if [[ $# == 0 ]]; then
 
+	# Also start cron.
+	if [[ ${CRON_ENABLE} == 1 ]]; then
+		exec /usr/sbin/crond
+	fi
+
 	# Start PHP 5 in this container if PHP_SERVER is unset
 	if [[ -z ${PHP_SERVER} ]]; then
 
@@ -92,7 +97,7 @@ if [[ $# == 0 ]]; then
 		POSTFIX_FOREGROUND=0 /postfix-entrypoint.sh
 	fi
 
-	# Make the user and group www-data own the content. nginx is using that user for displaying content 
+	# Make the user and group www-data own the content. nginx is using that user for displaying content
 	chown -R www-data:www-data ${WWW_DIR}
 
 	# Start the nginx webserver in foreground mode. The docker container lifecycle will be tied to nginx.
@@ -102,8 +107,8 @@ elif [[ $# == 1 && $1 == "help" || $1 == "usage" ]]; then
 	Supported nginx variables and their defaults:
 	 - NGINX_DOMAIN_NAME=${NGINX_DOMAIN_NAME}: The domain name that nginx should listen to. May be a string with several whitespace-separated domain names.
 	 - NGINX_WORKER_PROCESSES=${NGINX_WORKER_PROCESSES}: The amount of worker processes nginx should spawn.
-	 - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS}: The amount of worker connections one process may have open at a given time. 
-	
+	 - NGINX_WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS}: The amount of worker connections one process may have open at a given time.
+
 	nginx version: $(nginx -v 2>&1 | awk '{print $3}' | cut -d/ -f2)
 	mysql client version: $(mysql --version | awk '{print $5}' | cut -d- -f1)
 

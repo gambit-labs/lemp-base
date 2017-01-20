@@ -46,7 +46,7 @@ $ docker run -it gambitlabs/lemp-base:v0.4.0 help
 Supported nginx variables and their defaults:
  - NGINX_DOMAIN_NAME=localhost: The domain name that nginx should listen to. May be a string with several whitespace-separated domain names.
  - NGINX_WORKER_PROCESSES=1: The amount of worker processes nginx should spawn.
- - NGINX_WORKER_CONNECTIONS=1024: The amount of worker connections one process may have open at a given time. 
+ - NGINX_WORKER_CONNECTIONS=1024: The amount of worker connections one process may have open at a given time.
 
 nginx version: 1.11.5
 mysql client version: 10.1.18
@@ -56,6 +56,7 @@ Enabled/disabled features:
  - NGINX_ENABLE_HTTP2=0: If HTTP 2.0 should be enabled.
  - PHP_SERVER=: The PHP server nginx should pass requests to. Defaults to "", which means it will use the current.
  - MAIL_ENABLE=0: If postfix should be enabled
+ - CRON_ENABLE=0/1: Default 0.
 
 Supported PHP variables and their defaults:
  - PHP_MAX_EXECUTION_TIME=300: How many seconds a PHP request may take before it should timeout.
@@ -71,7 +72,7 @@ Supported postfix variables and their defaults:
  - POSTFIX_LOGIN_EMAIL=: The email address that should be used for login to the server.
  - POSTFIX_LOGIN_PASSWORD=: The password that should be used for login to the server.
  - POSTFIX_USE_TLS=0: If tls should be used.
- - POSTFIX_USE_PLAIN_ONLY=0: Makes postfix authenticate with the server via the PLAIN method. 
+ - POSTFIX_USE_PLAIN_ONLY=0: Makes postfix authenticate with the server via the PLAIN method.
  - POSTFIX_FOREGROUND=1: If this script should loop endlessly after postfix is started.
 
 postfix version: 3.1.1
