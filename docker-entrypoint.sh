@@ -76,7 +76,7 @@ if [[ $# == 0 ]]; then
 
 	# Also start cron.
 	if [[ ${CRON_ENABLE} == 1 ]]; then
-		exec /usr/sbin/crond
+		/usr/sbin/crond
 	fi
 
 	# Start PHP 5 in this container if PHP_SERVER is unset
