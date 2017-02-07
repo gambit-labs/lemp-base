@@ -84,6 +84,30 @@ WWW directory: `/var/www/html`. Here you should put all your website's data and 
 nginx configuration directory: `/etc/nginx/conf.d`. Here you should put your website's `location` directives.
 Certificates directory: `/certs`. If you enable HTTPS or HTTP2, you should volume-mount in `/certs/site.crt` as the certificate and `/certs/site.key` as the private key. Optional file for even more security is `/certs/dhparam.pem` that nginx will use if present.
 
+### Ubuntu 16.04 cloud-init
+
+To build the image the following [cloud-config](https://www.digitalocean.com/community/tutorials/an-introduction-to-cloud-config-scripting) can be used with a Digital Ocean Ubuntu 16.04 with at least 1 GB RAM:
+
+```
+#cloud-config
+package_update: true
+packages:
+  - git
+  - curl
+  - make
+  - wget
+  - nano
+  - software-properties-common
+  - apt-transport-https
+runcmd:
+  - apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+  - apt-add-repository -y 'deb https://apt.dockerproject.org/repo ubuntu-xenial main'
+  - apt-get update -y
+  - apt-get install -y docker-engine
+  - git clone https://github.com/gambit-labs/lemp-base.git /root/lemp-base
+# after login you'll find the cloud-init logs in /var/log/cloud-init-output.log
+```
+
 #### And more!
 
 TODO: More documentation would be nice!
