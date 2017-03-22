@@ -40,6 +40,8 @@ RUN mkdir -p \
 
 # Include all nginx configuration files here
 COPY nginx-conf/*.conf /etc/nginx/conf/
+# Include overridable files from conf.d
+COPY nginx-conf/conf.d/*.conf /etc/nginx/conf.d/
 
 # Default, sample PHPinfo config for demonstration
 # The applied/enabled configuration goes in /etc/nginx/conf.d
