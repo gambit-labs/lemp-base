@@ -2,7 +2,7 @@ FROM alpine:3.4
 
 RUN addgroup -S -g 82 www-data && adduser -S -D -u 82 -G www-data www-data
 
-RUN apk add --update curl-dev
+RUN apk add --update curl-dev libjpeg-turbo
 
 # Use mainline nginx based on the small alpine image
 INCLUDE https://raw.githubusercontent.com/nginxinc/docker-nginx/master/mainline/alpine/Dockerfile
