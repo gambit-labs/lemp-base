@@ -1,6 +1,6 @@
 IMAGE_REPO=gambitlabs/lemp-base
 IMAGE_VERSION=0.5.0
-IMAGE_REVISION=1
+IMAGE_REVISION=2
 STAGE_DIR=$(shell pwd)/_stage
 
 build: ./docker-ext-include.sh
