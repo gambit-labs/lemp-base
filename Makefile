@@ -1,5 +1,5 @@
 IMAGE_REPO=gambitlabs/lemp-base
-IMAGE_VERSION=0.5.0
+IMAGE_VERSION=0.5.1
 IMAGE_REVISION=1
 STAGE_DIR=$(shell pwd)/_stage
 
