@@ -88,6 +88,8 @@ Certificates directory: `/certs`. If you enable HTTPS or HTTP2, you should volum
 
 To build the image the following [cloud-config](https://www.digitalocean.com/community/tutorials/an-introduction-to-cloud-config-scripting) can be used with a Digital Ocean Ubuntu 16.04 with at least 1 GB RAM:
 
+Remember to check the IPv6 checkbox, since GPG's dirmngr might select a v6 server from the pool and try to connect to it, even though it doesn't have v6 connectivity inside the container.
+
 ```
 #cloud-config
 package_update: true
